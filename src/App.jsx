@@ -118,6 +118,7 @@ export default function App() {
           </button>
           <h1>🎥 Webcam Viewer</h1>
           <p className="subtitle">Öffentliche Webcams interaktiv entdecken</p>
+          <span className="theme-badge">NEW THEME</span>
         </div>
       </header>
 
