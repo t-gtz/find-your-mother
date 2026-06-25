@@ -74,39 +74,49 @@ app.get('/api/webcams/:id', (req, res) => {
 
 // GET /api/search - Suchfunktion
 app.get('/api/search', (req, res) => {
-  const keyword = req.query.q || '';
-  const city = req.query.city || '';
-  const category = req.query.category || '';
+  const keywordRaw = (req.query.q || '').trim();
   const limit = parseInt(req.query.limit) || 200;
 
-  let query = `
-    SELECT * FROM webcams 
-    WHERE is_active = 1
-  `;
-  const params = [];
-
-  if (keyword) {
-    query += ` AND (name LIKE ? OR description LIKE ?)`;
-    params.push(`%${keyword}%`, `%${keyword}%`);
+  if (!keywordRaw) {
+    db.all(`SELECT * FROM webcams WHERE is_active = 1 ORDER BY name ASC LIMIT ?`, [limit], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    });
+    return;
   }
 
-  if (city) {
-    query += ` AND city LIKE ?`;
-    params.push(`%${city}%`);
+  // Prepare FTS5 match string: prefix match on tokens
+  const sanitized = keywordRaw.replace(/[^\w\s\-]/g, ' ').trim();
+  const tokens = sanitized.split(/\s+/).filter(Boolean).map(t => `${t}*`).join(' ');
+
+  if (!tokens) {
+    return res.json([]);
   }
 
-  if (category) {
-    query += ` AND category = ?`;
-    params.push(category);
-  }
+  // Primary: use FTS5 match
+  db.all(
+    `SELECT w.* FROM webcams w JOIN webcams_fts f ON w.rowid = f.rowid WHERE f MATCH ? AND w.is_active = 1 ORDER BY w.name ASC LIMIT ?`,
+    [tokens, limit],
+    (err, rows) => {
+      if (err) {
+        // FTS5 may not be available — fallback to LIKE
+        const like = `%${keywordRaw}%`;
+        return db.all(`SELECT * FROM webcams WHERE is_active = 1 AND (name LIKE ? OR city LIKE ? OR country LIKE ?) ORDER BY name ASC LIMIT ?`, [like, like, like, limit], (e2, fallback) => {
+          if (e2) return res.status(500).json({ error: e2.message });
+          return res.json(fallback);
+        });
+      }
 
-  query += ` ORDER BY name ASC LIMIT ?`;
-  params.push(limit);
+      if (rows && rows.length > 0) return res.json(rows);
 
-  db.all(query, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+      // Fallback: simple LIKE search
+      const like = `%${keywordRaw}%`;
+      db.all(`SELECT * FROM webcams WHERE is_active = 1 AND (name LIKE ? OR city LIKE ? OR country LIKE ?) ORDER BY name ASC LIMIT ?`, [like, like, like, limit], (e3, fb) => {
+        if (e3) return res.status(500).json({ error: e3.message });
+        res.json(fb);
+      });
+    }
+  );
 });
 
 // GET /api/stream/:id - Stream-Info (für Frontend)

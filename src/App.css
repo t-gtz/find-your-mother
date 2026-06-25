@@ -26,15 +26,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .subtitle{font-size:12px;color:rgba(255,255,255,0.85);opacity:0.9}
 .theme-badge{background:linear-gradient(90deg,var(--accent),#7afcff);color:var(--primary-dark);padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;margin-left:12px;box-shadow:0 6px 18px rgba(0,217,255,0.08)}
 
-.sidebar-toggle{display:none;background:none;border:none;color:var(--accent);width:40px;height:40px;border-radius:8px;cursor:pointer;font-size:20px}
+.sidebar-toggle{display:inline-flex;background:none;border:none;color:var(--accent);width:44px;height:44px;border-radius:10px;cursor:pointer;font-size:20px;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(11,18,32,0.08);background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))}
 
 .app-body{display:flex;flex:1;overflow:hidden;position:relative}
 
 /* Floating sidebar */
-.sidebar-container{width:360px;flex-shrink:0;z-index:30;transition:transform var(--transition);}
-.sidebar-container.open{transform:translateX(0)}
-.sidebar-container.closed{transform:translateX(-105%)}
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:25}
+.sidebar-container{width:360px;flex-shrink:0;z-index:120;transition:transform var(--transition), box-shadow 240ms;position:fixed;top:84px;left:24px;height:calc(100% - 112px);border-radius:12px;overflow:hidden}
+.sidebar-container.open{transform:translateX(0) scale(1)}
+.sidebar-container.closed{transform:translateX(-120%) scale(0.98)}
+.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(3,6,15,0.45);z-index:110;opacity:0;transition:opacity 220ms;pointer-events:none}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
 
 .sidebar{background:white;border-right:1px solid var(--border);height:100%;display:flex;flex-direction:column}
 .sidebar-header{display:flex;align-items:center;justify-content:space-between;padding:18px;border-bottom:1px solid var(--border)}
@@ -52,14 +53,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tab.active{color:var(--accent);position:relative}
 .tab.active::after{content:'';position:absolute;left:12px;right:12px;bottom:0;height:3px;background:var(--accent);box-shadow:0 6px 14px rgba(0,217,255,0.08)}
 
-.webcam-list{flex:1;overflow:auto}
-.webcam-item{display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);align-items:flex-start;cursor:pointer}
-.webcam-item.selected{background:rgba(0,217,255,0.04);border-left:3px solid var(--accent);padding-left:11px}
-.webcam-thumbnail{width:72px;height:48px;object-fit:cover;border-radius:6px;background:#eee}
-.webcam-item-name{font-weight:700}
-.webcam-item-location{font-size:12px;color:var(--muted)}
-.webcam-favorite-btn{background:none;border:none;cursor:pointer;color:rgba(255,71,87,0.6)}
-.webcam-favorite-btn.active{color:#ff4757}
+.webcam-list{flex:1;overflow:auto;padding:12px;display:grid;grid-template-columns:1fr;gap:10px;width:100%}
+.webcam-list-item{display:flex;gap:12px;padding:12px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#fbfcff);align-items:center;border:1px solid rgba(15,23,42,0.03);cursor:pointer;transition:transform 140ms ease, box-shadow 140ms ease;width:100%}
+.webcam-list-item:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(11,18,32,0.06)}
+.webcam-list-item.selected{outline:2px solid rgba(0,217,255,0.08)}
+.webcam-thumbnail{width:84px;height:56px;object-fit:cover;border-radius:8px;background:#f1f5f9;flex:0 0 84px}
+.webcam-list-item-header{flex:1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0}
+.webcam-list-item-header h4{margin:0;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.favorite-icon{background:none;border:none;cursor:pointer;font-size:18px;color:rgba(153,153,153,0.7)}
+.favorite-icon.active{color:#fbbf24}
+.webcam-list-item-details{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;color:var(--muted);font-size:13px}
+.webcam-list-item-details .meta-left{display:flex;gap:8px;align-items:center;flex:1;min-width:0}
+.webcam-list-item-details .location-text{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;display:block;max-width:100%}
+.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.status-dot.online{background:var(--online)}
+.status-dot.offline{background:var(--offline)}
 
 /* Pulsing map marker (DivIcon) */
 .custom-div-icon{background:transparent}
@@ -82,9 +90,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .custom-cluster-icon.large{width:64px;height:64px}
 
 /* Sidebar entrance animation and extra whitespace for clean layout */
-.sidebar{padding-bottom:24px;display:flex;flex-direction:column}
+.sidebar{padding-bottom:28px;display:flex;flex-direction:column}
 .sidebar-container{transition:transform 320ms cubic-bezier(.22,.9,.37,1), box-shadow 240ms}
-.sidebar-container.open{box-shadow:0 20px 60px rgba(11,18,32,0.28)}
+.sidebar-container.open{box-shadow:none;filter:drop-shadow(0 18px 50px rgba(11,18,32,0.08))}
 .sidebar-header{padding:20px 20px}
 .search-container{padding:18px}
 .webcam-item{padding:14px 18px}

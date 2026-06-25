@@ -40,9 +40,8 @@ export default function WebcamList({
             </button>
           </div>
           <div className="webcam-list-item-details">
-            <span>
-              {cam.source === 'windy' && <span className="windy-badge">💨 Windy</span>}{' '}
-              {cam.city}, {cam.country}
+            <span className="meta-left">
+              <span className="location-text">{cam.city}, {cam.country}</span>
             </span>
             <div className="webcam-meta">
               <span className={`status-dot ${cam.is_active == 1 || cam.is_active === true ? 'online' : 'offline'}`} title={cam.is_active == 1 || cam.is_active === true ? 'Online' : 'Offline'}></span>
