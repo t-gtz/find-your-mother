@@ -173,21 +173,30 @@ app.get('/api/windy', async (req, res) => {
       });
     }
 
-    // Actual Windy API Fetch Logic
-    // We include location and player to get the coordinates and the stream/embed info
-    const fetchResponse = await fetch('https://api.windy.com/webcams/api/v3/webcams?limit=30&include=location,player', {
-      method: 'GET',
-      headers: {
-        'x-windy-api-key': apiKey
-      }
+    // Actual Windy API Fetch Logic using native https module
+    const https = require('https');
+    
+    const data = await new Promise((resolve, reject) => {
+      https.get('https://api.windy.com/webcams/api/v3/webcams?limit=30&include=location,player', {
+        headers: { 'x-windy-api-key': apiKey }
+      }, (resp) => {
+        let responseData = '';
+        resp.on('data', (chunk) => { responseData += chunk; });
+        resp.on('end', () => {
+          if (resp.statusCode !== 200) {
+            reject(new Error(`Windy API responded with status ${resp.statusCode}: ${responseData}`));
+          } else {
+            try {
+              resolve(JSON.parse(responseData));
+            } catch (e) {
+              reject(new Error("Failed to parse Windy API response"));
+            }
+          }
+        });
+      }).on('error', (err) => {
+        reject(err);
+      });
     });
-
-    if (!fetchResponse.ok) {
-      const errorText = await fetchResponse.text();
-      throw new Error(`Windy API responded with status ${fetchResponse.status}: ${errorText}`);
-    }
-
-    const data = await fetchResponse.json();
     
     // Map Windy data to our internal format
     const mappedCameras = data.webcams.map(cam => ({
