@@ -7,7 +7,7 @@ const fs = require('fs').promises;
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const DB_PATH = process.env.DB_PATH || './data/webcams.db';
 
 // Middleware
@@ -334,15 +334,9 @@ app.get('*', (req, res) => {
 initDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`
-    ╔════════════════════════════════════════════════╗
-    ║  🎥 Webcam Viewer Server                       ║
-    ║                                                ║
-    ║  🌐 Öffne: http://localhost:${PORT}             ║
-    ║  📊 Health: http://localhost:${PORT}/health     ║
-    ║  📁 Daten: ${DB_PATH}                          ║
-    ║                                                ║
-    ║  Kein Login erforderlich - direkter Zugriff    ║
-    ╚════════════════════════════════════════════════╝
+    
+    🎥 Webcam Viewer Server
+
     `);
   });
 }).catch(err => {

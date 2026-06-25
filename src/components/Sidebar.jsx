@@ -9,7 +9,8 @@ export default function Sidebar({
   favorites,
   onToggleFavorite,
   selectedWebcam,
-  isLoading
+  isLoading,
+  onClose
 }) {
   const [showFavorites, setShowFavorites] = useState(false);
 
@@ -21,7 +22,14 @@ export default function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-header">
         <h2>Webcams</h2>
-        <span className="count">{webcams.length}</span>
+        <div className="sidebar-header-right">
+          <span className="count">{webcams.length}</span>
+          {onClose && (
+            <button className="sidebar-close" onClick={onClose} title="Close sidebar">
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       <SearchBar onSearch={onSearch} />

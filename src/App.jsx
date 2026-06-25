@@ -13,6 +13,7 @@ export default function App() {
   const [favorites, setFavorites] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Lade Webcams beim Start
   useEffect(() => {
@@ -108,21 +109,35 @@ export default function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="header-content">
+          <button 
+            className="sidebar-toggle"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            title="Toggle sidebar"
+          >
+            ☰
+          </button>
           <h1>🎥 Webcam Viewer</h1>
           <p className="subtitle">Öffentliche Webcams interaktiv entdecken</p>
         </div>
       </header>
 
       <div className="app-body">
-        <Sidebar
-          webcams={displayWebcams}
-          onSearch={handleSearch}
-          onSelectWebcam={handleSelectWebcam}
-          favorites={favorites}
-          onToggleFavorite={toggleFavorite}
-          selectedWebcam={selectedWebcam}
-          isLoading={isLoading}
-        />
+        {sidebarOpen && (
+          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+        )}
+        
+        <div className={`sidebar-container ${sidebarOpen ? 'open' : 'closed'}`}>
+          <Sidebar
+            webcams={displayWebcams}
+            onSearch={handleSearch}
+            onSelectWebcam={handleSelectWebcam}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
+            selectedWebcam={selectedWebcam}
+            isLoading={isLoading}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </div>
 
         <div className="main-content">
           {error && (
