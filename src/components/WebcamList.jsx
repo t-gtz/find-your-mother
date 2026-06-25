@@ -38,7 +38,7 @@ export default function WebcamList({
           </div>
           <div className="webcam-list-item-details">
             <span>
-              {cam.source === 'earthcam' && <span className="earthcam-badge">🌍 EarthCam</span>}{' '}
+              {cam.source === 'windy' && <span className="windy-badge">💨 Windy</span>}{' '}
               {cam.city}, {cam.country}
             </span>
             <span className={`status-dot ${cam.is_active !== false ? 'online' : 'offline'}`} title={cam.is_active !== false ? 'Online' : 'Offline'}></span>

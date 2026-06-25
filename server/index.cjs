@@ -133,75 +133,83 @@ app.get('/api/stream/:id', (req, res) => {
   );
 });
 
-// GET /api/earthcam - EarthCam proxy endpoint
-app.get('/api/earthcam', async (req, res) => {
+// GET /api/windy - Windy Webcams proxy endpoint
+app.get('/api/windy', async (req, res) => {
   try {
-    const apiKey = process.env.EARTHCAM_API_KEY;
-    const apiUrl = process.env.EARTHCAM_API_URL;
+    const apiKey = process.env.WINDY_API_KEY;
 
     // Check if API key is configured
-    if (!apiKey || apiKey === 'your_earthcam_api_key_here') {
-      console.warn("EarthCam API key not configured. Returning mock data.");
-      // Return mock EarthCam data so the frontend has something to display
+    if (!apiKey || apiKey === 'your_windy_api_key_here') {
+      console.warn("Windy API key not configured. Returning mock data.");
+      // Return mock Windy data so the frontend has something to display
       return res.json({
         success: true,
         webcams: [
           {
-            id: 'earthcam-nyc',
-            name: 'EarthCam: Times Square',
-            city: 'New York',
+            id: 'windy-chicago',
+            name: 'Windy: Chicago Skyline',
+            city: 'Chicago',
             country: 'USA',
-            latitude: 40.7580,
-            longitude: -73.9855,
-            stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', // Mock HLS stream
+            latitude: 41.8781,
+            longitude: -87.6298,
+            stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', // Mock HLS
             stream_type: 'hls',
             category: 'city',
-            source: 'earthcam'
+            source: 'windy'
           },
           {
-            id: 'earthcam-miami',
-            name: 'EarthCam: Miami Beach',
-            city: 'Miami',
-            country: 'USA',
-            latitude: 25.7906,
-            longitude: -80.1300,
+            id: 'windy-london',
+            name: 'Windy: London Bridge',
+            city: 'London',
+            country: 'UK',
+            latitude: 51.5072,
+            longitude: -0.1276,
             stream_url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
             stream_type: 'hls',
-            category: 'beach',
-            source: 'earthcam'
+            category: 'city',
+            source: 'windy'
           }
         ]
       });
     }
 
-    // Example of how the real API fetch would look:
-    /*
-    const fetchResponse = await fetch(`${apiUrl}/cameras?api_key=${apiKey}`);
+    // Actual Windy API Fetch Logic
+    // We include location and player to get the coordinates and the stream/embed info
+    const fetchResponse = await fetch('https://api.windy.com/webcams/api/v3/webcams?limit=30&include=location,player', {
+      method: 'GET',
+      headers: {
+        'x-windy-api-key': apiKey
+      }
+    });
+
+    if (!fetchResponse.ok) {
+      const errorText = await fetchResponse.text();
+      throw new Error(`Windy API responded with status ${fetchResponse.status}: ${errorText}`);
+    }
+
     const data = await fetchResponse.json();
     
-    // Map EarthCam data to our internal format
-    const mappedCameras = data.map(cam => ({
-      id: `earthcam-${cam.id}`,
+    // Map Windy data to our internal format
+    const mappedCameras = data.webcams.map(cam => ({
+      id: `windy-${cam.webcamId}`,
       name: cam.title,
-      city: cam.location.city,
-      country: cam.location.country,
-      latitude: cam.lat,
-      longitude: cam.lng,
-      stream_url: cam.hls_url,
-      stream_type: 'hls',
+      city: cam.location?.city || 'Unknown',
+      country: cam.location?.country || 'Unknown',
+      latitude: cam.location?.latitude || 0,
+      longitude: cam.location?.longitude || 0,
+      // Windy typically returns a player URL (iframe embed) or a direct stream URL
+      // We will default to stream if available, otherwise player embed
+      stream_url: cam.player?.live?.available ? cam.player.live.embed : cam.player?.day?.embed,
+      stream_type: 'iframe', // We set to iframe since Windy player links are usually iframe embeds
       category: 'other',
-      source: 'earthcam'
-    }));
+      source: 'windy'
+    })).filter(cam => cam.stream_url); // Only include webcams that have a playable URL
 
     res.json({ success: true, webcams: mappedCameras });
-    */
-
-    // Fallback if key is provided but logic above is commented out:
-    res.status(501).json({ error: "EarthCam integration is mocked. Uncomment fetch logic in server/index.cjs once API details are known." });
 
   } catch (err) {
-    console.error('EarthCam API Error:', err);
-    res.status(500).json({ error: 'Failed to fetch from EarthCam API' });
+    console.error('Windy API Error:', err);
+    res.status(500).json({ error: 'Failed to fetch from Windy API' });
   }
 });
 

@@ -29,17 +29,17 @@ export default function App() {
       const data = await response.json();
       let allWebcams = data.webcams || [];
 
-      // Fetch EarthCam proxy API
+      // Fetch Windy proxy API
       try {
-        const earthcamResponse = await fetch('/api/earthcam');
-        if (earthcamResponse.ok) {
-          const earthcamData = await earthcamResponse.json();
-          if (earthcamData.success && earthcamData.webcams) {
-            allWebcams = [...allWebcams, ...earthcamData.webcams];
+        const windyResponse = await fetch('/api/windy');
+        if (windyResponse.ok) {
+          const windyData = await windyResponse.json();
+          if (windyData.success && windyData.webcams) {
+            allWebcams = [...allWebcams, ...windyData.webcams];
           }
         }
       } catch (ecErr) {
-        console.warn('Failed to fetch EarthCam webcams:', ecErr);
+        console.warn('Failed to fetch Windy webcams:', ecErr);
       }
 
       setWebcams(allWebcams);
