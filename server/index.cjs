@@ -43,7 +43,7 @@ function initDatabase() {
 
 // GET /api/webcams - Alle Webcams (mit Pagination)
 app.get('/api/webcams', (req, res) => {
-  const limit = parseInt(req.query.limit) || 50;
+  const limit = parseInt(req.query.limit) || 200;
   const offset = parseInt(req.query.offset) || 0;
 
   db.all(
@@ -77,7 +77,7 @@ app.get('/api/search', (req, res) => {
   const keyword = req.query.q || '';
   const city = req.query.city || '';
   const category = req.query.category || '';
-  const limit = parseInt(req.query.limit) || 50;
+  const limit = parseInt(req.query.limit) || 200;
 
   let query = `
     SELECT * FROM webcams 
@@ -125,8 +125,8 @@ app.get('/api/stream/:id', (req, res) => {
         name: row.name,
         streamUrl: row.stream_url,
         streamType: row.stream_type,
-        thumbnail: row.thumbnail_path 
-          ? `/thumbnails/${row.thumbnail_path}` 
+        thumbnail: row.thumbnail_path
+          ? `/thumbnails/${row.thumbnail_path}`
           : null
       });
     }
@@ -134,91 +134,95 @@ app.get('/api/stream/:id', (req, res) => {
 });
 
 // GET /api/windy - Windy Webcams proxy endpoint
+// Windy API v3 caps at 50 per request, so we paginate internally.
 app.get('/api/windy', async (req, res) => {
   try {
     const apiKey = process.env.WINDY_API_KEY;
+    const totalLimit = parseInt(req.query.limit) || 1000;
+    const startOffset = parseInt(req.query.offset) || 0;
+    const WINDY_PAGE_SIZE = 50; // Windy API max per request
 
     // Check if API key is configured
     if (!apiKey || apiKey === 'your_windy_api_key_here') {
-      console.warn("Windy API key not configured. Returning mock data.");
-      // Return mock Windy data so the frontend has something to display
-      return res.json({
-        success: true,
-        webcams: [
-          {
-            id: 'windy-chicago',
-            name: 'Windy: Chicago Skyline',
-            city: 'Chicago',
-            country: 'USA',
-            latitude: 41.8781,
-            longitude: -87.6298,
-            stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', // Mock HLS
-            stream_type: 'hls',
-            category: 'city',
-            source: 'windy'
-          },
-          {
-            id: 'windy-london',
-            name: 'Windy: London Bridge',
-            city: 'London',
-            country: 'UK',
-            latitude: 51.5072,
-            longitude: -0.1276,
-            stream_url: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
-            stream_type: 'hls',
-            category: 'city',
-            source: 'windy'
-          }
-        ]
+      console.warn('Windy API key not configured. Set WINDY_API_KEY in .env file.');
+      return res.status(503).json({ error: 'Windy API key not configured. Please add WINDY_API_KEY to your .env file.' });
+    }
+
+    const https = require('https');
+
+    // Helper: fetch a single page from Windy
+    function fetchWindyPage(limit, offset) {
+      const url = `https://api.windy.com/webcams/api/v3/webcams?limit=${limit}&offset=${offset}&include=location,player,images`;
+      return new Promise((resolve, reject) => {
+        https.get(url, {
+          headers: { 'x-windy-api-key': apiKey }
+        }, (resp) => {
+          let responseData = '';
+          resp.on('data', (chunk) => { responseData += chunk; });
+          resp.on('end', () => {
+            if (resp.statusCode !== 200) {
+              reject(new Error(`Windy API responded with status ${resp.statusCode}: ${responseData}`));
+            } else {
+              try {
+                resolve(JSON.parse(responseData));
+              } catch (e) {
+                reject(new Error('Failed to parse Windy API response'));
+              }
+            }
+          });
+        }).on('error', reject);
       });
     }
 
-    // Actual Windy API Fetch Logic using native https module
-    const https = require('https');
-    
-    const data = await new Promise((resolve, reject) => {
-      https.get('https://api.windy.com/webcams/api/v3/webcams?limit=30&include=location,player', {
-        headers: { 'x-windy-api-key': apiKey }
-      }, (resp) => {
-        let responseData = '';
-        resp.on('data', (chunk) => { responseData += chunk; });
-        resp.on('end', () => {
-          if (resp.statusCode !== 200) {
-            reject(new Error(`Windy API responded with status ${resp.statusCode}: ${responseData}`));
-          } else {
-            try {
-              resolve(JSON.parse(responseData));
-            } catch (e) {
-              reject(new Error("Failed to parse Windy API response"));
-            }
-          }
-        });
-      }).on('error', (err) => {
-        reject(err);
-      });
-    });
-    
-    // Map Windy data to our internal format
-    const mappedCameras = data.webcams.map(cam => ({
+    // Build page requests
+    const pages = [];
+    let remaining = totalLimit;
+    let currentOffset = startOffset;
+    while (remaining > 0) {
+      const pageSize = Math.min(remaining, WINDY_PAGE_SIZE);
+      pages.push({ limit: pageSize, offset: currentOffset });
+      remaining -= pageSize;
+      currentOffset += pageSize;
+    }
+
+    // Fetch all pages in parallel
+    const results = await Promise.all(pages.map(p => fetchWindyPage(p.limit, p.offset)));
+
+    // Merge webcams from all pages
+    let allWebcams = [];
+    let total = 0;
+    for (const data of results) {
+      allWebcams = allWebcams.concat(data.webcams || []);
+      total = data.total || total; // total stays the same across pages
+    }
+
+    // Map Windy API response to our internal format
+    const mappedCameras = allWebcams.map(cam => ({
       id: `windy-${cam.webcamId}`,
       name: cam.title,
-      city: cam.location?.city || 'Unknown',
+      city: cam.location?.city || cam.location?.region || 'Unknown',
       country: cam.location?.country || 'Unknown',
+      country_code: cam.location?.country_code || '',
       latitude: cam.location?.latitude || 0,
       longitude: cam.location?.longitude || 0,
-      // Windy typically returns a player URL (iframe embed) or a direct stream URL
-      // We will default to stream if available, otherwise player embed
-      stream_url: cam.player?.live?.available ? cam.player.live.embed : cam.player?.day?.embed,
-      stream_type: 'iframe', // We set to iframe since Windy player links are usually iframe embeds
-      category: 'other',
-      source: 'windy'
-    })).filter(cam => cam.stream_url); // Only include webcams that have a playable URL
+      stream_url: cam.player?.live || cam.player?.day,
+      stream_type: 'iframe',
+      thumbnail_url: cam.images?.current?.thumbnail || cam.images?.daylight?.thumbnail || null,
+      is_active: cam.status === 'active' ? 1 : 0,
+      category: 'nature',
+      source: 'windy',
+      view_count: cam.viewCount || 0
+    })).filter(cam => cam.stream_url && cam.latitude !== 0);
 
-    res.json({ success: true, webcams: mappedCameras });
+    res.json({
+      success: true,
+      webcams: mappedCameras,
+      total: total
+    });
 
   } catch (err) {
     console.error('Windy API Error:', err);
-    res.status(500).json({ error: 'Failed to fetch from Windy API' });
+    res.status(500).json({ error: `Failed to fetch from Windy API: ${err.message}` });
   }
 });
 
@@ -281,7 +285,7 @@ app.get('/api/settings', (req, res) => {
     'SELECT key, value FROM settings',
     (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
-      
+
       const settings = {};
       rows.forEach(row => {
         try {

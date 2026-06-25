@@ -6,9 +6,11 @@ export default function VideoPlayer({ webcam }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [streamInfo, setStreamInfo] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     if (!webcam) return;
+    setIsPlaying(false);
 
     const loadStream = async () => {
       try {
@@ -16,9 +18,12 @@ export default function VideoPlayer({ webcam }) {
         setError(null);
 
         let info;
-        // Skip backend fetch for proxy APIs since we already have the URL
         if (webcam.source === 'windy' || webcam.source === 'earthcam') {
-          info = { streamUrl: webcam.stream_url, streamType: webcam.stream_type };
+          info = { 
+            streamUrl: webcam.stream_url, 
+            streamType: webcam.stream_type,
+            thumbnailUrl: webcam.thumbnail_url 
+          };
         } else {
           const response = await fetch(`/api/stream/${webcam.id}`);
           info = await response.json();
@@ -26,32 +31,22 @@ export default function VideoPlayer({ webcam }) {
 
         setStreamInfo(info);
 
-        const streamUrl = info.streamUrl;
-        const streamType = info.streamType;
-        const video = videoRef.current;
-
-        // Abhängig vom Stream-Typ laden
-        if (streamType === 'iframe') {
-          // handled in render below
-        } else if (streamType === 'hls' && HLS.isSupported() && video) {
-          const hls = new HLS();
-          hls.loadSource(streamUrl);
-          hls.attachMedia(video);
-          hls.on(HLS.Events.ERROR, (event, data) => {
-            if (data.fatal) {
-              setError(`HLS Error: ${data.response?.statusText}`);
-            }
-          });
-          video.play().catch(err => setError(`Playback error: ${err.message}`));
-        } else if ((streamType === 'http' || streamType === 'mjpeg') && video) {
-          video.src = streamUrl;
-          video.play().catch(err => setError(`Playback error: ${err.message}`));
-        } else {
-          setError(`Stream-Typ nicht unterstützt: ${streamType}`);
+        if (info.streamType !== 'iframe') {
+          const video = videoRef.current;
+          if (info.streamType === 'hls' && HLS.isSupported() && video) {
+            const hls = new HLS();
+            hls.loadSource(info.streamUrl);
+            hls.attachMedia(video);
+            hls.on(HLS.Events.ERROR, (event, data) => {
+              if (data.fatal) setError(`HLS Error: ${data.response?.statusText}`);
+            });
+          } else if ((info.streamType === 'http' || info.streamType === 'mjpeg') && video) {
+            video.src = info.streamUrl;
+          }
+          setIsPlaying(true);
         }
       } catch (err) {
         setError(`Fehler beim Laden des Streams: ${err.message}`);
-        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -60,17 +55,20 @@ export default function VideoPlayer({ webcam }) {
     loadStream();
   }, [webcam]);
 
+  const handlePlayClick = () => setIsPlaying(true);
+
   return (
-    <div className="video-player-container">
+    <div className="video-player-container" style={{ position: 'relative', width: '100%' }}>
       {loading && <div className="loading-spinner">Lädt Stream...</div>}
 
-      {error && (
-        <div className="error-message">
-          ⚠️ {error}
-        </div>
-      )}
+      {error && <div className="error-message">⚠️ {error}</div>}
 
-      {streamInfo?.streamType === 'iframe' ? (
+      {!isPlaying && streamInfo?.thumbnailUrl ? (
+        <div className="thumbnail-overlay" onClick={handlePlayClick} style={{ cursor: 'pointer', position: 'relative' }}>
+          <img src={streamInfo.thumbnailUrl} alt="Thumbnail" style={{ width: '100%', borderRadius: '8px' }} />
+          <div className="play-button" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '3rem' }}>▶</div>
+        </div>
+      ) : streamInfo?.streamType === 'iframe' ? (
         <iframe
           src={streamInfo.streamUrl}
           style={{ width: '100%', height: '500px', backgroundColor: '#000', borderRadius: '8px', border: 'none' }}
@@ -84,13 +82,7 @@ export default function VideoPlayer({ webcam }) {
           autoPlay
           muted
           className="video-player"
-          style={{
-            width: '100%',
-            maxHeight: '600px',
-            backgroundColor: '#000',
-            borderRadius: '8px',
-            display: streamInfo?.streamType === 'iframe' ? 'none' : 'block'
-          }}
+          style={{ width: '100%', maxHeight: '600px', backgroundColor: '#000', borderRadius: '8px' }}
         />
       )}
 

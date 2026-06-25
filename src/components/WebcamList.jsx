@@ -24,6 +24,9 @@ export default function WebcamList({
           className={`webcam-list-item ${selectedWebcam?.id === cam.id ? 'selected' : ''}`}
           onClick={() => onSelectWebcam(cam)}
         >
+          {cam.thumbnail_url && (
+            <img src={cam.thumbnail_url} alt={cam.name} className="webcam-thumbnail" />
+          )}
           <div className="webcam-list-item-header">
             <h4>{cam.name}</h4>
             <button 
@@ -41,7 +44,10 @@ export default function WebcamList({
               {cam.source === 'windy' && <span className="windy-badge">💨 Windy</span>}{' '}
               {cam.city}, {cam.country}
             </span>
-            <span className={`status-dot ${cam.is_active !== false ? 'online' : 'offline'}`} title={cam.is_active !== false ? 'Online' : 'Offline'}></span>
+            <div className="webcam-meta">
+              <span className={`status-dot ${cam.is_active == 1 || cam.is_active === true ? 'online' : 'offline'}`} title={cam.is_active == 1 || cam.is_active === true ? 'Online' : 'Offline'}></span>
+              {cam.view_count !== undefined && <span className="view-count">👁️ {cam.view_count.toLocaleString()}</span>}
+            </div>
           </div>
         </div>
       ))}

@@ -191,10 +191,68 @@ body {
 }
 
 .webcam-list-item {
-  padding: 15px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.webcam-thumbnail {
+  width: 64px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: #eee;
+}
+
+.webcam-list-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.view-count {
+  font-size: 11px;
+  color: #888;
+  margin-left: 6px;
+}
+
+.webcam-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Play button overlay for iframes */
+.thumbnail-overlay {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.thumbnail-overlay img {
+  width: 100%;
+  display: block;
+}
+
+.play-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+  pointer-events: none;
+  transition: transform 0.2s;
+}
+
+.thumbnail-overlay:hover .play-button {
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
 .webcam-list-item:hover {
