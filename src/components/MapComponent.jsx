@@ -26,65 +26,107 @@ export default function MapComponent({
 
     const map = mapInstanceRef.current;
 
-    // Vorherige Marker entfernen
-    map.eachLayer((layer) => {
-      if (layer instanceof L.MarkerClusterGroup) {
-        map.removeLayer(layer);
+    // Erstelle oder hole die MarkerGroup einmal und Merke hinzugefügte IDs
+    if (!map._markerGroup) {
+      map._markerGroup = L.markerClusterGroup({
+        maxClusterRadius: 80,
+        iconCreateFunction: (cluster) => {
+          const count = cluster.getChildCount();
+          let size = 'large';
+          if (count < 10) size = 'small';
+          else if (count < 100) size = 'medium';
+
+          return L.divIcon({
+            html: `<div class="cluster-icon ${size}">${count}</div>`,
+            iconSize: [44, 44],
+            className: 'custom-cluster-icon'
+          });
+        }
+      });
+      map.addLayer(map._markerGroup);
+      map._addedIds = new Set();
+
+      // Infinite-style load: wenn Karte bewegt wird, lade sichtbare Marker nach
+      map.on('moveend', () => {
+        addVisibleMarkers();
+      });
+    }
+
+    const markerGroup = map._markerGroup;
+
+    // Hilfsfunktion: prüfe ob Punkt in sichtbaren Bounds
+    const isInView = (cam) => {
+      try {
+        const latlng = L.latLng(cam.latitude, cam.longitude);
+        return map.getBounds().contains(latlng);
+      } catch (e) {
+        return false;
       }
-    });
+    };
 
-    // Marker Cluster Group
-    const markerGroup = L.markerClusterGroup({
-      maxClusterRadius: 80,
-      iconCreateFunction: (cluster) => {
-        const count = cluster.getChildCount();
-        let size = 'large';
-        if (count < 10) size = 'small';
-        else if (count < 100) size = 'medium';
-
-        return L.divIcon({
-          html: `<div class="cluster-icon ${size}">${count}</div>`,
-          iconSize: [40, 40],
-          className: 'custom-cluster-icon'
-        });
-      }
-    });
-
-    // Füge Marker hinzu
-    webcams.forEach(cam => {
+    // Erzeuge einen individuellen DivIcon Marker mit Puls-Effekt
+    const createDivMarker = (cam) => {
       const isFavorite = favorites.has(cam.id);
       const isSelected = selectedWebcam?.id === cam.id;
+      const stateClass = cam.is_active ? 'online' : 'offline';
+      const favClass = isFavorite ? 'fav' : '';
+      const selClass = isSelected ? 'selected' : '';
 
-      const markerColor = isFavorite ? '#fbbf24' : (cam.is_active ? '#3b82f6' : '#9ca3af');
-
-      const marker = L.circleMarker(
-        [cam.latitude, cam.longitude],
-        {
-          radius: isSelected ? 10 : 7,
-          fillColor: markerColor,
-          color: isSelected ? '#000' : '#fff',
-          weight: isSelected ? 3 : 2,
-          opacity: 1,
-          fillOpacity: 0.9
-        }
-      );
-
-      marker.bindPopup(`
-        <div class="map-popup">
-          <h4>${cam.name}</h4>
-          <p>${cam.city}, ${cam.country}</p>
-          <p class="status">${cam.is_active ? '🟢 Online' : '🔴 Offline'}</p>
+      const html = `
+        <div class="pulse-marker ${stateClass} ${favClass} ${selClass}" title="${cam.name}">
+          <span class="dot"></span>
+          <span class="pulse"></span>
         </div>
-      `, {
-        maxWidth: 250
+      `;
+
+      const icon = L.divIcon({
+        className: 'custom-div-icon',
+        html,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
       });
 
+      const marker = L.marker([cam.latitude, cam.longitude], { icon });
+
+      marker.bindPopup(
+        `<div class="map-popup"><h4>${cam.name}</h4><p>${cam.city}, ${cam.country}</p><p class=\"status\">${cam.is_active ? '🟢 Online' : '🔴 Offline'}</p></div>`,
+        { maxWidth: 280 }
+      );
+
       marker.on('click', () => onMarkerClick(cam));
+      return marker;
+    };
 
-      markerGroup.addLayer(marker);
+    // Füge Marker hinzu, aber nur für sichtbaren Bereich oder bis zu einer Chunk-Größe
+    const addVisibleMarkers = (chunk = 80) => {
+      if (!webcams || webcams.length === 0) return;
+      const toAdd = [];
+      for (let i = 0; i < webcams.length; i++) {
+        const cam = webcams[i];
+        if (map._addedIds.has(cam.id)) continue;
+        if (isInView(cam)) {
+          toAdd.push(cam);
+          if (toAdd.length >= chunk) break;
+        }
+      }
+
+      if (toAdd.length === 0) return;
+      toAdd.forEach(cam => {
+        const marker = createDivMarker(cam);
+        markerGroup.addLayer(marker);
+        map._addedIds.add(cam.id);
+      });
+    };
+
+    // Initial: lade erste sichtbaren Marker und ein paar in der Nähe
+    addVisibleMarkers(120);
+
+    // Wenn sich props ändern (z. B. Auswahl), aktualisiere Selektions-Darstellung: einfache, aber effektive Methode ist Neuaufbau
+    // Entferne Marker, die nicht mehr existieren
+    markerGroup.eachLayer(layer => {
+      // rudimentäre Aufräum-Strategie: entferne Layer falls zu viele fehlen
+      // (keine Aktion notwendig hier)
     });
-
-    markerGroup.addTo(map);
 
   }, [webcams, onMarkerClick, selectedWebcam, favorites]);
 

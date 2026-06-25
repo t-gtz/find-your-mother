@@ -61,6 +61,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .webcam-favorite-btn{background:none;border:none;cursor:pointer;color:rgba(255,71,87,0.6)}
 .webcam-favorite-btn.active{color:#ff4757}
 
+/* Pulsing map marker (DivIcon) */
+.custom-div-icon{background:transparent}
+.pulse-marker{position:relative;width:20px;height:20px;display:inline-block}
+.pulse-marker .dot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.25)}
+.pulse-marker .pulse{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;animation:pulse 1.8s infinite ease-out;opacity:0.9}
+.pulse-marker.online .dot{background:var(--online);border:2px solid rgba(255,255,255,0.15)}
+.pulse-marker.online .pulse{background:rgba(0,255,65,0.14);box-shadow:0 6px 18px rgba(0,255,65,0.08)}
+.pulse-marker.offline .dot{background:var(--offline);border:2px solid rgba(255,255,255,0.12)}
+.pulse-marker.offline .pulse{background:rgba(255,71,87,0.12)}
+.pulse-marker.fav .dot{box-shadow:0 0 12px rgba(251,191,36,0.18)}
+.pulse-marker.selected .dot{transform:translate(-50%,-50%) scale(1.4);}
+
+@keyframes pulse{0%{transform:translate(-50%,-50%) scale(1);opacity:0.9}70%{transform:translate(-50%,-50%) scale(2.6);opacity:0}100%{opacity:0}}
+
+/* Cluster icon visual polish */
+.custom-cluster-icon{background:linear-gradient(135deg,var(--accent),#7afcff);border:2px solid rgba(255,255,255,0.9);border-radius:50%;color:white;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.18)}
+.custom-cluster-icon.small{width:36px;height:36px}
+.custom-cluster-icon.medium{width:46px;height:46px}
+.custom-cluster-icon.large{width:64px;height:64px}
+
+/* Sidebar entrance animation and extra whitespace for clean layout */
+.sidebar{padding-bottom:24px;display:flex;flex-direction:column}
+.sidebar-container{transition:transform 320ms cubic-bezier(.22,.9,.37,1), box-shadow 240ms}
+.sidebar-container.open{box-shadow:0 20px 60px rgba(11,18,32,0.28)}
+.sidebar-header{padding:20px 20px}
+.search-container{padding:18px}
+.webcam-item{padding:14px 18px}
+.webcam-item h4{margin-bottom:2px}
+.webcam-item .meta{font-size:13px;color:var(--muted)}
+.app-body{gap:18px}
+.main-content{padding:18px}
+.map-view{border-radius:12px;overflow:hidden}
+
+
 /* Main area */
 .main-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
 .map-view{flex:1;position:relative}
