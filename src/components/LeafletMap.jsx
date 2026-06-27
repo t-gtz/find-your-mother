@@ -7,20 +7,20 @@ export default function LeafletMap({
   webcams,
   onMarkerClick,
   selectedWebcam,
-  favorites
+  favorites,
+  visible
 }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
 
   // Trigger size recalculation when the map is revealed
   useEffect(() => {
-    if (mapInstanceRef.current && !selectedWebcam) {
-      // Small timeout to ensure display: block is active
+    if (mapInstanceRef.current && visible) {
       setTimeout(() => {
         mapInstanceRef.current.invalidateSize();
-      }, 50);
+      }, 100);
     }
-  }, [selectedWebcam]);
+  }, [visible]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -43,92 +43,59 @@ export default function LeafletMap({
         maxClusterRadius: 80,
         iconCreateFunction: (cluster) => {
           const count = cluster.getChildCount();
+          const size = count < 10 ? 'small' : count < 100 ? 'medium' : 'large';
+          const dim = size === 'small' ? 36 : size === 'medium' ? 46 : 64;
           const el = buildClusterEl(count);
           return L.divIcon({
             html: el,
-            iconSize: [44, 44],
-            className: 'custom-cluster-icon'
+            iconSize: [dim, dim],
+            // Empty className prevents Leaflet's wrapper from inheriting
+            // cluster styles that conflict with the inner element
+            className: ''
           });
         }
       });
       map.addLayer(map._markerGroup);
-      map._addedIds = new Set();
-
-      // Infinite-style load: wenn Karte bewegt wird, lade sichtbare Marker nach
-      map.on('moveend', () => {
-        addVisibleMarkers();
-      });
     }
 
     const markerGroup = map._markerGroup;
 
-    // Clear existing markers to force rebuilding with correct favorite/selection state
+    // Clear and rebuild all markers — MarkerClusterGroup handles
+    // 1000+ markers efficiently, no need for viewport-based chunking
     markerGroup.clearLayers();
-    map._addedIds.clear();
 
-    // Hilfsfunktion: prüfe ob Punkt in sichtbaren Bounds
-    const isInView = (cam) => {
-      try {
-        const latlng = L.latLng(cam.latitude, cam.longitude);
-        return map.getBounds().contains(latlng);
-      } catch (e) {
-        return false;
-      }
-    };
+    if (webcams && webcams.length > 0) {
+      const markers = webcams.map(cam => {
+        const el = buildMarkerEl(cam, {
+          isFav: favorites.has(cam.id),
+          isSelected: selectedWebcam?.id === cam.id
+        });
+        const icon = L.divIcon({
+          className: 'custom-div-icon',
+          html: el,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14]
+        });
 
-    // Erzeuge einen individuellen DivIcon Marker mit Puls-Effekt using shared utils
-    const createDivMarker = (cam) => {
-      const el = buildMarkerEl(cam, {
-        isFav: favorites.has(cam.id),
-        isSelected: selectedWebcam?.id === cam.id
+        const marker = L.marker([cam.latitude, cam.longitude], { icon });
+
+        marker.bindPopup(
+          `<div class="map-popup"><h4>${cam.name}</h4><p>${cam.city}, ${cam.country}</p><p class="status">${cam.is_active ? '🟢 Online' : '🔴 Offline'}</p></div>`,
+          { maxWidth: 280 }
+        );
+        marker.on('click', () => onMarkerClick(cam));
+        return marker;
       });
 
-      const icon = L.divIcon({
-        className: 'custom-div-icon',
-        html: el,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14]
-      });
+      // Bulk-add is much faster than adding one by one
+      markerGroup.addLayers(markers);
+    }
 
-      const marker = L.marker([cam.latitude, cam.longitude], { icon });
-
-      marker.bindPopup(
-        `<div class="map-popup"><h4>${cam.name}</h4><p>${cam.city}, ${cam.country}</p><p class="status">${cam.is_active ? '🟢 Online' : '🔴 Offline'}</p></div>`,
-        { maxWidth: 280 }
-      );
-
-      marker.on('click', () => onMarkerClick(cam));
-      return marker;
-    };
-
-    // Füge Marker hinzu, aber nur für sichtbaren Bereich oder bis zu einer Chunk-Größe
-    const addVisibleMarkers = (chunk = 80) => {
-      if (!webcams || webcams.length === 0) return;
-      const toAdd = [];
-      for (let i = 0; i < webcams.length; i++) {
-        const cam = webcams[i];
-        if (map._addedIds.has(cam.id)) continue;
-        if (isInView(cam)) {
-          toAdd.push(cam);
-          if (toAdd.length >= chunk) break;
-        }
-      }
-
-      if (toAdd.length === 0) return;
-      toAdd.forEach(cam => {
-        const marker = createDivMarker(cam);
-        markerGroup.addLayer(marker);
-        map._addedIds.add(cam.id);
-      });
-    };
-
-    // Initial: lade erste sichtbaren Marker und ein paar in der Nähe
-    addVisibleMarkers(120);
 
   }, [webcams, onMarkerClick, selectedWebcam, favorites]);
 
   return (
-    <div 
+    <div
       ref={mapRef}
       className="map-container"
       style={{ height: '100%', width: '100%', zIndex: 1 }}

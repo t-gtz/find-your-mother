@@ -5,7 +5,7 @@ import { buildMarkerEl, buildClusterEl } from '../utils/markerUtils';
 
 // Globe altitude ↔ zoom helpers
 const altToZoom = (alt) =>
-  Math.max(1, Math.min(14, Math.round(-Math.log2(Math.max(alt, 0.001)) + 5)));
+  Math.max(1, Math.min(14, Math.floor(-Math.log2(Math.max(alt, 0.001)) + 4)));
 
 const zoomToAlt = (zoom) =>
   Math.max(0.02, Math.pow(2, 5 - zoom));
@@ -13,7 +13,7 @@ const zoomToAlt = (zoom) =>
 export default function GlobeMap({ webcams, onMarkerClick, selectedWebcam, favorites }) {
   const containerRef = useRef(null);
   const globeInstanceRef = useRef(null);
-  
+
   const { getClusters, getExpansionZoom } = useSupercluster(webcams);
 
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -68,12 +68,12 @@ export default function GlobeMap({ webcams, onMarkerClick, selectedWebcam, favor
     if (!containerRef.current) return;
 
     const globe = Globe()(containerRef.current)
-      .globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg')
+      .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
       .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
       .backgroundColor('rgba(0, 0, 0, 0)')
       .showAtmosphere(true)
       .atmosphereColor('#00d9ff') // Matching project's --accent color
-      .atmospherePowerOf(3.5);
+      .atmosphereAltitude(0.25);
 
     globeInstanceRef.current = globe;
 
@@ -90,7 +90,7 @@ export default function GlobeMap({ webcams, onMarkerClick, selectedWebcam, favor
           .height(containerRef.current.clientHeight);
       }
     };
-    
+
     // Initial size
     handleResize();
 
@@ -128,9 +128,9 @@ export default function GlobeMap({ webcams, onMarkerClick, selectedWebcam, favor
   }, [selectedWebcam]);
 
   return (
-    <div 
-      ref={containerRef} 
-      className="globe-container" 
+    <div
+      ref={containerRef}
+      className="globe-container"
       style={{ width: '100%', height: '100%', overflow: 'hidden' }}
     />
   );

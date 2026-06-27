@@ -6,6 +6,7 @@ import VideoPlayer from './components/VideoPlayer';
 import SearchBar from './components/SearchBar';
 import WebcamList from './components/WebcamList';
 import Sidebar from './components/Sidebar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 export default function App() {
@@ -32,7 +33,7 @@ export default function App() {
   const fetchWebcams = async () => {
     try {
       setIsLoading(true);
-      
+
       // Fetch local DB webcams
       const response = await fetch('/api/webcams?limit=500');
       const data = await response.json();
@@ -117,7 +118,7 @@ export default function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="header-content">
-          <button 
+          <button
             className="sidebar-toggle"
             onClick={() => setSidebarOpen(!sidebarOpen)}
             title="Toggle sidebar"
@@ -131,7 +132,7 @@ export default function App() {
 
       <div className="app-body">
         <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
-        
+
         <div className={`sidebar-container ${sidebarOpen ? 'open' : 'closed'}`}>
           <Sidebar
             webcams={displayWebcams}
@@ -156,7 +157,7 @@ export default function App() {
           {selectedWebcam && (
             <div className="webcam-view">
               <div className="webcam-header">
-                <button 
+                <button
                   className="back-button"
                   onClick={() => setSelectedWebcam(null)}
                 >
@@ -207,24 +208,27 @@ export default function App() {
           {/* Keep maps mounted and toggle visibility with .hidden class */}
           <div className={`map-view ${selectedWebcam ? 'hidden' : ''}`}>
             <MapToggle mode={mapMode} onChange={handleMapModeChange} />
-            
-            <div className={mapMode === 'flat' ? '' : 'hidden'} style={{ height: '100%', width: '100%' }}>
-              <LeafletMap
-                webcams={displayWebcams}
-                onMarkerClick={handleSelectWebcam}
-                selectedWebcam={selectedWebcam}
-                favorites={favorites}
-              />
-            </div>
-            
-            <div className={mapMode === 'globe' ? '' : 'hidden'} style={{ height: '100%', width: '100%' }}>
-              <GlobeMap
-                webcams={displayWebcams}
-                onMarkerClick={handleSelectWebcam}
-                selectedWebcam={selectedWebcam}
-                favorites={favorites}
-              />
-            </div>
+
+            <ErrorBoundary>
+              <div className={mapMode === 'flat' ? '' : 'hidden'} style={{ position: 'absolute', inset: 0 }}>
+                <LeafletMap
+                  webcams={displayWebcams}
+                  onMarkerClick={handleSelectWebcam}
+                  selectedWebcam={selectedWebcam}
+                  favorites={favorites}
+                  visible={mapMode === 'flat' && !selectedWebcam}
+                />
+              </div>
+
+              <div className={mapMode === 'globe' ? '' : 'hidden'} style={{ position: 'absolute', inset: 0 }}>
+                <GlobeMap
+                  webcams={displayWebcams}
+                  onMarkerClick={handleSelectWebcam}
+                  selectedWebcam={selectedWebcam}
+                  favorites={favorites}
+                />
+              </div>
+            </ErrorBoundary>
           </div>
         </div>
       </div>
